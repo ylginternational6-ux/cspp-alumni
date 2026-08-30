@@ -1,5 +1,7 @@
+/// <reference types="node" />
 import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
+import type { Config } from "drizzle-kit";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -23,7 +25,7 @@ export default defineConfig({
         user: decodeURIComponent(parsedUrl.username),
         password: decodeURIComponent(parsedUrl.password),
         database: parsedUrl.pathname.replace(/^\//, ""),
-        ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+        ssl: "amazon",
       }
     : { url: connectionString },
 });
