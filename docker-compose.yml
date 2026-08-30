@@ -1,0 +1,16 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cspp_alumni
+      MYSQL_USER: cspp
+      MYSQL_PASSWORD: cspp_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - cspp_mysql_data:/var/lib/mysql
+
+volumes:
+  cspp_mysql_data:
