@@ -1,5 +1,5 @@
-import { count, eq, isNull } from "drizzle-orm";
-import { events, mentorshipRequests, opportunities, posts, reports, users, verificationRequests } from "../../drizzle/schema";
+import { count, eq } from "drizzle-orm";
+import { events, mentorshipRequests, opportunities, posts, reports, users } from "../../drizzle/schema";
 import { getDb } from "./client";
 
 export async function getDashboardStats() {
@@ -9,7 +9,7 @@ export async function getDashboardStats() {
   const [[totalMembers], [verifiedMembers], [pendingVerifications], [openReports], [pendingOpportunities], [pendingEvents], [pendingMentorship], [totalPosts]] = await Promise.all([
     db.select({ value: count() }).from(users),
     db.select({ value: count() }).from(users).where(eq(users.accountStatus, "verified")),
-    db.select({ value: count() }).from(verificationRequests).where(isNull(verificationRequests.reviewedAt)),
+    db.select({ value: count() }).from(users).where(eq(users.accountStatus, "pending_verification")),
     db.select({ value: count() }).from(reports).where(eq(reports.status, "open")),
     db.select({ value: count() }).from(opportunities).where(eq(opportunities.status, "pending")),
     db.select({ value: count() }).from(events).where(eq(events.status, "pending")),

@@ -1,5 +1,6 @@
 /** CSPP Alumni header: reference Accueil — brand, central search, clear black action, real notifications. */
 import { Bell, Mail, Menu, Plus, Search, X } from "lucide-react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { assets } from "@/data/mockData";
@@ -7,6 +8,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { storageUrl } from "@/lib/storageUrl";
 import { Avatar } from "@/components/UiPrimitives";
+import { CreateMenu } from "@/components/CreateMenu";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type AppHeaderProps = { onOpenMenu: () => void; mobileMenuOpen: boolean };
@@ -25,6 +27,7 @@ export function AppHeader({ onOpenMenu, mobileMenuOpen }: AppHeaderProps) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const overviewQuery = trpc.account.overview.useQuery(undefined, { enabled: Boolean(user) });
+  const [createOpen, setCreateOpen] = useState(false);
 
   function search(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -64,7 +67,7 @@ export function AppHeader({ onOpenMenu, mobileMenuOpen }: AppHeaderProps) {
         </form>
 
         <div className="ml-auto flex items-center gap-1.5 lg:gap-2">
-          <button onClick={() => navigate("/")} className="hidden h-10 items-center gap-2 rounded-full bg-black px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#17233B] active:scale-[0.97] md:flex">
+          <button onClick={() => setCreateOpen(true)} className="hidden h-10 items-center gap-2 rounded-full bg-black px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#17233B] active:scale-[0.97] md:flex">
             <Plus size={18} strokeWidth={2.6} /> Publier
           </button>
           <button aria-label="Rechercher" onClick={() => navigate("/alumnis")} className="grid h-9 w-9 place-items-center rounded-full text-[#162038] transition hover:bg-[#F1EBDD] active:scale-95 md:hidden">
@@ -79,6 +82,7 @@ export function AppHeader({ onOpenMenu, mobileMenuOpen }: AppHeaderProps) {
           </Link>
         </div>
       </div>
+      <CreateMenu open={createOpen} onClose={() => setCreateOpen(false)} />
     </header>
   );
 }

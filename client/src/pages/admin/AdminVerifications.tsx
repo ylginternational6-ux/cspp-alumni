@@ -8,7 +8,7 @@ import { MobileQueryBar } from "@/components/MobileQueryControls";
 import { AdminAvatar, AdminPageHeader, AdminPanel } from "@/components/AdminPrimitives";
 import { trpc } from "@/lib/trpc";
 
-type QueueItem = { id: number; userId: number; name: string | null; email: string | null; status: string; submittedAt: string | Date };
+type QueueItem = { userId: number; name: string | null; email: string | null; createdAt: string | Date; requestStatus: string | null; submittedAt: string | Date | null };
 
 export default function AdminVerifications() {
   const utils = trpc.useUtils();
@@ -16,28 +16,30 @@ export default function AdminVerifications() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
-  const queueQuery = trpc.admin.verificationQueue.useQuery();
+  // Rafraîchissement automatique : un nouveau compte inscrit ailleurs doit apparaître sans avoir à recharger la page.
+  const queueQuery = trpc.admin.verificationQueue.useQuery(undefined, { refetchInterval: 10000 });
   const rows = useMemo(() => {
-    const list = queueQuery.data ?? [];
-    return list.filter((item: QueueItem) => `${item.name ?? ""} ${item.email ?? ""}`.toLowerCase().includes(term.toLowerCase()));
+    const list = (queueQuery.data ?? []) as QueueItem[];
+    return list.filter((item) => `${item.name ?? ""} ${item.email ?? ""}`.toLowerCase().includes(term.toLowerCase()));
   }, [queueQuery.data, term]);
 
-  const activeSelectedId = selectedId ?? rows[0]?.id ?? null;
-  const selected = rows.find((item) => item.id === activeSelectedId);
+  const activeSelectedId = selectedId ?? rows[0]?.userId ?? null;
+  const selected = rows.find((item) => item.userId === activeSelectedId);
 
-  const detailQuery = trpc.admin.verificationDetail.useQuery({ requestId: activeSelectedId ?? 0 }, { enabled: Boolean(activeSelectedId) });
+  const detailQuery = trpc.admin.verificationDetail.useQuery({ userId: activeSelectedId ?? 0 }, { enabled: Boolean(activeSelectedId) });
 
   const decide = trpc.admin.decideVerification.useMutation({
     onSuccess: (_data, variables) => {
       utils.admin.verificationQueue.invalidate();
+      utils.admin.dashboardStats.invalidate();
       setMobileDetailOpen(false);
       toast.success(variables.decision === "approved" ? "Compte vérifié : le badge bleu est actif." : variables.decision === "rejected" ? "Demande refusée." : "Complément demandé.");
     },
     onError: (error) => toast.error(error.message),
   });
 
-  const selectDossier = (id: number) => {
-    setSelectedId(id);
+  const selectDossier = (userId: number) => {
+    setSelectedId(userId);
     if (window.innerWidth < 1024) setMobileDetailOpen(true);
   };
 
@@ -55,15 +57,18 @@ export default function AdminVerifications() {
           </AdminPanel>
           <div className="mt-4 space-y-3">
             {rows.map((item) => (
-              <button key={item.id} onClick={() => selectDossier(item.id)} className={`w-full rounded-xl border p-4 text-left transition ${activeSelectedId === item.id ? "border-[#B8933C] bg-[#FFFCF5] shadow-[0_5px_18px_rgba(142,105,30,0.1)]" : "border-[#DCE1E9] bg-white hover:border-[#BFC9D7]"}`}>
+              <button key={item.userId} onClick={() => selectDossier(item.userId)} className={`w-full rounded-xl border p-4 text-left transition ${activeSelectedId === item.userId ? "border-[#B8933C] bg-[#FFFCF5] shadow-[0_5px_18px_rgba(142,105,30,0.1)]" : "border-[#DCE1E9] bg-white hover:border-[#BFC9D7]"}`}>
                 <div className="flex gap-3">
                   <AdminAvatar name={item.name ?? "Alumni"} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-bold text-[#18263D]">{item.name}</p>
-                      <span className="text-[10px] text-[#818B99]">{new Date(item.submittedAt).toLocaleDateString("fr-FR")}</span>
+                      <span className="text-[10px] text-[#818B99]">{new Date(item.createdAt).toLocaleDateString("fr-FR")}</span>
                     </div>
                     <p className="mt-1 text-[11px] text-[#788393]">{item.email}</p>
+                    <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[9px] font-extrabold ${item.requestStatus === "submitted" ? "bg-[#EAF4EE] text-[#286146]" : "bg-[#F1F3F8] text-[#5D6878]"}`}>
+                      {item.requestStatus === "submitted" ? "Justificatif déposé" : "Aucun justificatif déposé"}
+                    </span>
                   </div>
                 </div>
               </button>
@@ -117,7 +122,7 @@ function VerificationDetail({
       <div className={`p-6 ${mobile ? "min-h-[calc(100dvh-11rem)] bg-[#FDFBF7]" : ""}`}>
         <div className="rounded-lg border border-[#E0E4EA] bg-[#FAFBFD] p-4">
           <p className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-[#8E742E]">Justificatifs soumis ({documents.length})</p>
-          {documents.length === 0 && <p className="mt-3 text-xs text-[#768194]">Aucun document déposé pour cette demande.</p>}
+          {documents.length === 0 && <p className="mt-3 text-xs text-[#768194]">Ce membre n'a pas encore déposé de justificatif — vous pouvez tout de même valider, refuser ou demander un complément.</p>}
           {documents.map((document) => (
             <div key={document.id} className="mt-3 flex gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#EAF0F8] text-[#234A76]">
@@ -129,13 +134,15 @@ function VerificationDetail({
               </div>
             </div>
           ))}
-          <button onClick={() => toast.info("L'aperçu sécurisé du document sera branché sur le stockage de fichiers.")} className="mt-4 flex items-center gap-1 text-xs font-bold text-[#1A3C67] hover:gap-2">
-            Ouvrir le justificatif <ChevronRight size={14} />
-          </button>
+          {documents.length > 0 && (
+            <button onClick={() => toast.info("L'aperçu sécurisé du document sera branché sur le stockage de fichiers.")} className="mt-4 flex items-center gap-1 text-xs font-bold text-[#1A3C67] hover:gap-2">
+              Ouvrir le justificatif <ChevronRight size={14} />
+            </button>
+          )}
         </div>
         <div className="mt-5 divide-y divide-[#E9ECF0]">
           <Info label="Adresse e-mail" value={dossier.email ?? "—"} icon={<Mail size={16} />} />
-          <Info label="Statut" value={dossier.status} icon={<AlertTriangle size={16} />} />
+          <Info label="Inscrit le" value={new Date(dossier.createdAt).toLocaleDateString("fr-FR")} icon={<AlertTriangle size={16} />} />
         </div>
         <p className="mt-5 rounded-lg bg-[#FFF7E5] px-3 py-2.5 text-xs leading-5 text-[#705421]">
           <strong>À vérifier :</strong> comparez les éléments déclarés au(x) justificatif(s) avant de valider l'accès. Le passage en statut vérifié est immédiat et journalisé.

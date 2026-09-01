@@ -10,7 +10,9 @@ import Home from "./pages/Home";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Directory from "./pages/Directory";
+import Network from "./pages/Network";
 import Promotions from "./pages/Promotions";
+import PromotionDetail from "./pages/PromotionDetail";
 import Opportunities from "./pages/Opportunities";
 import Mentorship from "./pages/Mentorship";
 import Messages from "./pages/Messages";
@@ -49,7 +51,9 @@ function Router() {
     <Route path="/admin" component={() => <AdminShell component={AdminDashboard} />} />
     <Route path="/login" component={Login} />
     <Route path="/" component={() => <Shell component={Home} />} />
+    <Route path="/network" component={() => <Shell component={Network} />} />
     <Route path="/alumnis" component={() => <Shell component={Directory} />} />
+    <Route path="/promotions/:id" component={() => <Shell component={PromotionDetail} />} />
     <Route path="/promotions" component={() => <Shell component={Promotions} />} />
     <Route path="/opportunites" component={() => <Shell component={Opportunities} />} />
     <Route path="/mentorat" component={() => <Shell component={Mentorship} />} />

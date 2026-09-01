@@ -5,10 +5,10 @@ import { logAction } from "./audit";
 
 export class FeedError extends Error {}
 
-export async function createPost(authorId: number, input: { body: string; visibility?: "network" | "promotion_only" | "public"; attachmentStorageKey?: string }) {
+export async function createPost(authorId: number, input: { body: string; visibility?: "network" | "promotion_only" | "public"; attachmentStorageKey?: string; attachmentMimeType?: string }) {
   const db = await getDb();
   if (!db) throw new FeedError("Base de données indisponible");
-  const [{ id }] = await db.insert(posts).values({ authorId, body: input.body.trim(), visibility: input.visibility ?? "network", attachmentStorageKey: input.attachmentStorageKey ?? null }).$returningId();
+  const [{ id }] = await db.insert(posts).values({ authorId, body: input.body.trim(), visibility: input.visibility ?? "network", attachmentStorageKey: input.attachmentStorageKey ?? null, attachmentMimeType: input.attachmentMimeType ?? null }).$returningId();
   return id;
 }
 
@@ -33,7 +33,7 @@ export async function listFeed(viewerId: number, cursor?: number) {
 
   const limit = 20;
   const rows = await db
-    .select({ id: posts.id, authorId: posts.authorId, body: posts.body, visibility: posts.visibility, attachmentStorageKey: posts.attachmentStorageKey, createdAt: posts.createdAt, editedAt: posts.editedAt, hiddenAt: posts.hiddenAt, hiddenReason: posts.hiddenReason, deletedAt: posts.deletedAt, authorName: users.name, authorAccountStatus: users.accountStatus, authorAvatar: alumniProfiles.avatarStorageKey })
+    .select({ id: posts.id, authorId: posts.authorId, body: posts.body, visibility: posts.visibility, attachmentStorageKey: posts.attachmentStorageKey, attachmentMimeType: posts.attachmentMimeType, createdAt: posts.createdAt, editedAt: posts.editedAt, hiddenAt: posts.hiddenAt, hiddenReason: posts.hiddenReason, deletedAt: posts.deletedAt, authorName: users.name, authorAccountStatus: users.accountStatus, authorAvatar: alumniProfiles.avatarStorageKey })
     .from(posts)
     .innerJoin(users, eq(users.id, posts.authorId))
     .leftJoin(alumniProfiles, eq(alumniProfiles.userId, posts.authorId))

@@ -1,5 +1,5 @@
 /** Client pour la route d'upload (voir server/_core/upload.ts). */
-export type UploadPurpose = "avatar" | "verification_document" | "message_attachment";
+export type UploadPurpose = "avatar" | "cover" | "post_media" | "verification_document" | "message_attachment";
 
 export type UploadResult = { storageKey: string; url: string; originalName: string; mimeType: string; sizeBytes: number };
 

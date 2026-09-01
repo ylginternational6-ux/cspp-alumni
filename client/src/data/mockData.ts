@@ -31,6 +31,7 @@ export const currentUser = {
 export const navItems = [
   { label: "Accueil", href: "/", icon: "House" },
   { label: "Alumnis", href: "/alumnis", icon: "UsersRound" },
+  { label: "Réseau", href: "/network", icon: "Contact" },
   { label: "Promotions", href: "/promotions", icon: "GraduationCap" },
   { label: "Opportunités", href: "/opportunites", icon: "BriefcaseBusiness" },
   { label: "Mentorat", href: "/mentorat", icon: "Handshake" },

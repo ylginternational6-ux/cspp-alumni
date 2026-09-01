@@ -14,7 +14,7 @@ async function resolveActorRole(userId: number, isAdmin: boolean): Promise<strin
 export const adminRouter = router({
   // --- Vérification des comptes ---
   verificationQueue: adminProcedure.query(() => db.listVerificationQueue()),
-  verificationDetail: adminProcedure.input(z.object({ requestId: z.number().int().positive() })).query(({ input }) => db.getVerificationDetail(input.requestId)),
+  verificationDetail: adminProcedure.input(z.object({ userId: z.number().int().positive() })).query(({ input }) => db.getVerificationDetail(input.userId)),
   decideVerification: adminProcedure
     .input(z.object({ userId: z.number().int().positive(), decision: z.enum(["approved", "rejected", "needs_information"]), reason: z.string().max(3000).optional() }))
     .mutation(async ({ ctx, input }) => {

@@ -1,0 +1,1 @@
+ALTER TABLE `posts` ADD `attachmentMimeType` varchar(100);

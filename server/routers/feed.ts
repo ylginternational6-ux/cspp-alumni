@@ -13,7 +13,7 @@ export const feedRouter = router({
   list: protectedProcedure.input(z.object({ cursor: z.number().int().optional() })).query(({ ctx, input }) => db.listFeed(ctx.user.id, input.cursor)),
 
   create: verifiedProcedure
-    .input(z.object({ body: z.string().min(1).max(3000), visibility: z.enum(["network", "promotion_only", "public"]).optional(), attachmentStorageKey: z.string().max(512).optional() }))
+    .input(z.object({ body: z.string().min(1).max(3000), visibility: z.enum(["network", "promotion_only", "public"]).optional(), attachmentStorageKey: z.string().max(512).optional(), attachmentMimeType: z.string().max(100).optional() }))
     .mutation(async ({ ctx, input }) => ({ postId: await db.createPost(ctx.user.id, input) })),
 
   update: verifiedProcedure.input(z.object({ postId: z.number().int().positive(), body: z.string().min(1).max(3000) })).mutation(async ({ ctx, input }) => {

@@ -1,4 +1,4 @@
-import { eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { users, verificationDocuments, verificationRequests } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { logAction } from "./audit";
@@ -16,14 +16,27 @@ export async function submitVerification(userId: number, documents: Array<{ stor
   return requestId;
 }
 
+/**
+ * File d'attente admin : basée sur le statut réel du compte
+ * (accountStatus = 'pending_verification'), pas seulement sur les comptes
+ * ayant déjà soumis un justificatif. Un compte fraîchement créé doit
+ * apparaître immédiatement, avec ou sans document déposé.
+ */
 export async function listVerificationQueue() {
   const db = await getDb();
   if (!db) return [];
   return db
-    .select({ id: verificationRequests.id, userId: users.id, name: users.name, email: users.email, status: verificationRequests.status, submittedAt: verificationRequests.submittedAt })
-    .from(verificationRequests)
-    .innerJoin(users, eq(verificationRequests.userId, users.id))
-    .where(isNull(verificationRequests.reviewedAt));
+    .select({
+      userId: users.id,
+      name: users.name,
+      email: users.email,
+      createdAt: users.createdAt,
+      requestStatus: verificationRequests.status,
+      submittedAt: verificationRequests.submittedAt,
+    })
+    .from(users)
+    .leftJoin(verificationRequests, eq(verificationRequests.userId, users.id))
+    .where(eq(users.accountStatus, "pending_verification"));
 }
 
 export async function getMyVerification(userId: number) {
@@ -38,18 +51,21 @@ export async function getMyVerification(userId: number) {
   return { request, documents };
 }
 
-export async function getVerificationDetail(requestId: number) {
+/** Détail d'un dossier, basé sur userId (et non plus requestId) pour couvrir aussi les comptes sans justificatif soumis. */
+export async function getVerificationDetail(userId: number) {
   const db = await getDb();
   if (!db) return null;
-  const [request] = await db
-    .select({ id: verificationRequests.id, userId: verificationRequests.userId, status: verificationRequests.status, submittedAt: verificationRequests.submittedAt, decisionReason: verificationRequests.decisionReason, name: users.name, email: users.email })
-    .from(verificationRequests)
-    .innerJoin(users, eq(verificationRequests.userId, users.id))
-    .where(eq(verificationRequests.id, requestId))
-    .limit(1);
-  if (!request) return null;
-  const documents = await db.select().from(verificationDocuments).where(eq(verificationDocuments.verificationRequestId, requestId));
-  return { request, documents };
+  const [account] = await db.select({ id: users.id, name: users.name, email: users.email, createdAt: users.createdAt }).from(users).where(eq(users.id, userId)).limit(1);
+  if (!account) return null;
+
+  const [request] = await db.select().from(verificationRequests).where(eq(verificationRequests.userId, userId)).limit(1);
+  const documents = request ? await db.select().from(verificationDocuments).where(eq(verificationDocuments.verificationRequestId, request.id)) : [];
+
+  return {
+    account,
+    request: request ?? null,
+    documents,
+  };
 }
 
 /**

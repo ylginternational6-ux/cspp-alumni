@@ -178,7 +178,7 @@ function OpportunityDetail({ opportunity, saved, onToggleSaved, mobile = false }
   );
 }
 
-function CreateOpportunityModal({ onClose, onSubmit, isPending }: { onClose: () => void; onSubmit: (input: { title: string; type: "job" | "internship" | "freelance" | "volunteering" | "other"; organization?: string; location?: string; description: string; applyUrl?: string }) => void; isPending: boolean }) {
+export function CreateOpportunityModal({ onClose, onSubmit, isPending }: { onClose: () => void; onSubmit: (input: { title: string; type: "job" | "internship" | "freelance" | "volunteering" | "other"; organization?: string; location?: string; description: string; applyUrl?: string }) => void; isPending: boolean }) {
   const [title, setTitle] = useState("");
   const [type, setType] = useState<"job" | "internship" | "freelance" | "volunteering" | "other">("job");
   const [organization, setOrganization] = useState("");

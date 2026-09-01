@@ -19,6 +19,7 @@ export const accountRouter = router({
         mentorAvailable: z.boolean().optional(),
         mentorTopics: z.array(z.string().max(60)).max(10).optional(),
         avatarStorageKey: z.string().max(512).optional(),
+        coverStorageKey: z.string().max(512).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

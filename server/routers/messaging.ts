@@ -54,4 +54,15 @@ export const messagingRouter = router({
       toTrpcError(error);
     }
   }),
+
+  // --- Chat de groupe par promotion ---
+  joinPromotionChat: verifiedProcedure.input(z.object({ promotionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    try {
+      const conversationId = await db.getOrJoinPromotionConversation(ctx.user.id, input.promotionId);
+      return { conversationId } as const;
+    } catch (error) {
+      toTrpcError(error);
+    }
+  }),
+  conversationMembers: protectedProcedure.input(z.object({ conversationId: z.number().int().positive() })).query(({ input }) => db.listConversationMembers(input.conversationId)),
 });

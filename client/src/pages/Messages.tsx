@@ -1,6 +1,6 @@
 /** CSPP Alumni messages: messagerie réelle, branchée sur server/routers/messaging.ts. */
 import { Paperclip, Plus, Search, Send, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Avatar, PageIntro, Panel } from "@/components/UiPrimitives";
 import { storageUrl } from "@/lib/storageUrl";
@@ -198,9 +198,13 @@ function Chat({ conversationId, otherName, className }: { conversationId: number
     }
   };
 
-  if (conversationId && messagesQuery.data && messagesQuery.data.length > 0) {
-    markRead.mutate({ conversationId });
-  }
+  const lastMessageId = messagesQuery.data?.at(-1)?.id;
+  useEffect(() => {
+    if (conversationId && lastMessageId) {
+      markRead.mutate({ conversationId });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, lastMessageId]);
 
   if (!conversationId) {
     return (

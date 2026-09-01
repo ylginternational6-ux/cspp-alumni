@@ -1,12 +1,14 @@
 /** CSPP Alumni sidebar: reference Événements — member context and durable route navigation, données réelles. */
 import * as Icons from "lucide-react";
-import { LogOut, X } from "lucide-react";
+import { Camera, LogOut, X } from "lucide-react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { navItems } from "@/data/mockData";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { storageUrl } from "@/lib/storageUrl";
+import { uploadFile } from "@/lib/upload";
 
 type AppSidebarProps = { mobileOpen: boolean; onCloseMobile: () => void };
 type NavIconName = keyof typeof Icons;
@@ -34,14 +36,39 @@ function SidebarContent({ close }: { close?: () => void }) {
     onError: () => toast.error("Échec de la déconnexion."),
   });
 
+  const updateProfile = trpc.account.updateProfile.useMutation({
+    onSuccess: () => utils.account.overview.invalidate(),
+    onError: (error) => toast.error(error.message),
+  });
+
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const handleCoverChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setUploadingCover(true);
+    try {
+      const result = await uploadFile(file, "cover");
+      updateProfile.mutate({ coverStorageKey: result.storageKey });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Échec de l'envoi de la photo de couverture.");
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
   return (
     <>
-      <Link href="/profil" onClick={close} className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white shadow-[0_5px_18px_rgba(10,32,63,0.055)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(10,32,63,0.08)]">
+      <div className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white shadow-[0_5px_18px_rgba(10,32,63,0.055)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(10,32,63,0.08)]">
         <div className="relative h-[78px] overflow-hidden bg-[#142B4C]">
-          <img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80" alt="Communauté CSPP Alumni" className="h-full w-full object-cover opacity-70" />
+          <img src={storageUrl(profile?.coverStorageKey) ?? "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80"} alt="Photo de couverture" className="h-full w-full object-cover opacity-70" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0B1C35]/70 to-transparent" />
+          <label className="absolute right-2 top-2 grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-black/40 text-white backdrop-blur transition hover:bg-black/60" title="Changer la photo de couverture">
+            <Camera size={15} />
+            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleCoverChange} disabled={uploadingCover} />
+          </label>
         </div>
-        <div className="relative flex flex-col items-center px-5 pb-5 text-center">
+        <Link href="/profil" onClick={close} className="relative flex flex-col items-center px-5 pb-5 text-center">
           <img src={storageUrl(profile?.avatarStorageKey) ?? "/favicon.svg"} alt={user?.name ?? "Mon profil"} className="-mt-9 h-[76px] w-[76px] rounded-full border-4 border-white bg-white object-cover shadow-sm" />
           <div className="mt-2 flex items-center gap-1 text-[#08162D]">
             <span className="font-editorial text-[22px] font-semibold">{user?.name ?? "Mon profil"}</span>
@@ -49,8 +76,8 @@ function SidebarContent({ close }: { close?: () => void }) {
           </div>
           <span className="mt-0.5 text-xs font-medium text-[#6F7180]">{promotion ? (promotion.label ?? `Promotion ${promotion.year}`) : "Promotion non renseignée"}</span>
           <span className="mt-1 text-[11px] text-[#8A8A8A]">{isVerified ? "Alumni vérifié" : "En cours de validation"}</span>
-        </div>
-      </Link>
+        </Link>
+      </div>
 
       <nav aria-label="Navigation principale" className="flex flex-1 flex-col gap-0.5">
         {navItems.map((item) => {

@@ -1,6 +1,6 @@
 /** CSPP Alumni promotions: cohortes réelles, branchées sur server/routers/account.ts (account.promotions). */
 import { ArrowUpRight, CalendarDays, UsersRound } from "lucide-react";
-import { toast } from "sonner";
+import { Link } from "wouter";
 import { PageIntro, Panel } from "@/components/UiPrimitives";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -39,12 +39,9 @@ export default function Promotions() {
               </p>
               <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-extrabold ${promotion.isActive ? "bg-[#EAF4EE] text-[#286146]" : "bg-[#F2F3F5] text-[#596372]"}`}>{promotion.isActive ? "Active" : "Inactive"}</span>
               <div className="mt-5 border-t border-[#EEEAE3] pt-4">
-                <button
-                  onClick={() => toast.info(`L'espace dédié à la promotion ${promotion.year} arrive dans une prochaine itération.`)}
-                  className="flex items-center gap-1 text-xs font-extrabold text-[#172842] transition hover:gap-2"
-                >
-                  Accéder à l'espace
-                </button>
+                <Link href={`/promotions/${promotion.id}`} className="flex items-center gap-1 text-xs font-extrabold text-[#172842] transition hover:gap-2">
+                  Accéder à l'espace <ArrowUpRight size={14} />
+                </Link>
               </div>
             </div>
           </Panel>

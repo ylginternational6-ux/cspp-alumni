@@ -1,12 +1,13 @@
 /** CSPP Alumni home: fil de publications réel, branché sur server/routers/feed.ts. */
 import { useState } from "react";
-import { CalendarDays, MessageCircle, Send, ThumbsUp, UserPlus } from "lucide-react";
+import { Bookmark, CalendarDays, Image as ImageIcon, MessageCircle, Send, ThumbsUp, UserPlus, Video, X } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, EventDate, Panel } from "@/components/UiPrimitives";
 import { trpc } from "@/lib/trpc";
 import { storageUrl } from "@/lib/storageUrl";
+import { uploadFile } from "@/lib/upload";
 
 function initialsFrom(name?: string | null) {
   if (!name) return "?";
@@ -40,10 +41,14 @@ export default function Home() {
   const overviewQuery = trpc.account.overview.useQuery();
 
   const [draft, setDraft] = useState("");
+  const [pendingMedia, setPendingMedia] = useState<{ storageKey: string; mimeType: string } | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [openComments, setOpenComments] = useState<Record<number, boolean>>({});
 
   const createPost = trpc.feed.create.useMutation({
     onSuccess: () => {
       setDraft("");
+      setPendingMedia(null);
       utils.feed.list.invalidate();
       toast.success("Publication partagée avec le réseau.");
     },
@@ -52,6 +57,16 @@ export default function Home() {
 
   const reactMutation = trpc.feed.react.useMutation({
     onSuccess: () => utils.feed.list.invalidate(),
+    onError: (error) => toast.error(error.message),
+  });
+
+  const savedIdsQuery = trpc.saved.ids.useQuery();
+  const savedPostIds = new Set((savedIdsQuery.data ?? []).filter((row) => row.itemType === "post").map((row) => row.itemId));
+  const toggleSaved = trpc.saved.toggle.useMutation({
+    onSuccess: (data) => {
+      utils.saved.ids.invalidate();
+      toast.success(data.saved ? "Publication enregistrée." : "Publication retirée des enregistrés.");
+    },
     onError: (error) => toast.error(error.message),
   });
 
@@ -68,8 +83,23 @@ export default function Home() {
       toast.info("Votre compte doit être vérifié pour publier sur le réseau.");
       return;
     }
-    if (!draft.trim()) return;
-    createPost.mutate({ body: draft.trim() });
+    if (!draft.trim() && !pendingMedia) return;
+    createPost.mutate({ body: draft.trim() || " ", attachmentStorageKey: pendingMedia?.storageKey, attachmentMimeType: pendingMedia?.mimeType });
+  };
+
+  const handleMediaChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setUploadingMedia(true);
+    try {
+      const result = await uploadFile(file, "post_media");
+      setPendingMedia({ storageKey: result.storageKey, mimeType: result.mimeType });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Échec de l'envoi du média.");
+    } finally {
+      setUploadingMedia(false);
+    }
   };
 
   const posts = feedQuery.data?.items ?? [];
@@ -95,10 +125,24 @@ export default function Home() {
                 className="h-11 flex-1 resize-none rounded-2xl border border-[#E4E5EA] bg-[#F1F3F8] px-4 py-2.5 text-left text-sm text-[#19243A] placeholder:text-[#707787] transition focus:outline-none focus:ring-2 focus:ring-[#142640]/20 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </div>
-            <div className="mt-3 flex justify-end">
+            {pendingMedia && (
+              <div className="relative mt-3 overflow-hidden rounded-xl border border-[#E4E5EA]">
+                {pendingMedia.mimeType.startsWith("video/") ? <video src={storageUrl(pendingMedia.storageKey)} controls className="max-h-72 w-full bg-black" /> : <img src={storageUrl(pendingMedia.storageKey)} alt="Aperçu du média" className="max-h-72 w-full object-cover" />}
+                <button onClick={() => setPendingMedia(null)} aria-label="Retirer le média" className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white hover:bg-black/70">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+            <div className="mt-3 flex items-center justify-between">
+              <label className={`flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold transition ${isVerified ? "cursor-pointer text-[#536174] hover:bg-[#F1F3F8]" : "cursor-not-allowed text-[#B9BFC7]"}`}>
+                <ImageIcon size={17} />
+                <Video size={17} />
+                {uploadingMedia ? "Envoi..." : "Photo / vidéo"}
+                <input type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime" className="hidden" disabled={!isVerified || uploadingMedia} onChange={handleMediaChange} />
+              </label>
               <button
                 onClick={handlePublish}
-                disabled={!isVerified || !draft.trim() || createPost.isPending}
+                disabled={!isVerified || (!draft.trim() && !pendingMedia) || createPost.isPending}
                 className="rounded-full bg-[#142640] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#0B1931] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {createPost.isPending ? "Publication..." : "Publier"}
@@ -129,7 +173,13 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6 text-[#2A3446]">{post.body}</p>
+              <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6 text-[#2A3446]">{post.body.trim()}</p>
+              {post.attachmentStorageKey &&
+                (post.attachmentMimeType?.startsWith("video/") ? (
+                  <video src={storageUrl(post.attachmentStorageKey)} controls className="mt-4 max-h-[480px] w-full rounded-xl bg-black" />
+                ) : (
+                  <img src={storageUrl(post.attachmentStorageKey)} alt="Média de la publication" className="mt-4 max-h-[480px] w-full rounded-xl object-cover" />
+                ))}
             </div>
             <div className="flex items-center gap-5 px-4 pb-4 pt-3 sm:px-5">
               <button
@@ -139,14 +189,22 @@ export default function Home() {
                 <ThumbsUp size={19} fill={post.viewerReaction ? "currentColor" : "none"} />
                 {post.reactionCount}
               </button>
-              <button onClick={() => toast.info("Les commentaires s'ouvrent depuis la publication détaillée.")} className="flex items-center gap-1.5 text-xs font-semibold text-[#737983] transition hover:text-[#172F54]">
+              <button onClick={() => setOpenComments((state) => ({ ...state, [post.id]: !state[post.id] }))} className="flex items-center gap-1.5 text-xs font-semibold text-[#737983] transition hover:text-[#172F54]">
                 <MessageCircle size={19} />
                 {post.commentCount}
               </button>
-              <button onClick={() => toast.success("Le lien de cette publication a été copié.")} aria-label="Partager" className="ml-auto text-[#737983] transition hover:text-[#172F54]">
+              <button onClick={() => toast.success("Le lien de cette publication a été copié.")} aria-label="Partager" className="text-[#737983] transition hover:text-[#172F54]">
                 <Send size={19} />
               </button>
+              <button
+                onClick={() => (isVerified ? toggleSaved.mutate({ itemType: "post", itemId: post.id }) : toast.info("Vérifiez votre compte pour enregistrer une publication."))}
+                aria-label="Enregistrer"
+                className={`ml-auto transition ${savedPostIds.has(post.id) ? "text-[#8B661D]" : "text-[#737983] hover:text-[#172F54]"}`}
+              >
+                <Bookmark size={19} fill={savedPostIds.has(post.id) ? "currentColor" : "none"} />
+              </button>
             </div>
+            {openComments[post.id] && <PostComments postId={post.id} isVerified={isVerified} />}
           </article>
         ))}
       </section>
@@ -215,6 +273,74 @@ export default function Home() {
         </Panel>
         <p className="px-1 text-center text-[10px] leading-5 text-[#9A9A98]">CSPP Alumni · Contact · Confidentialité · Règlement intérieur</p>
       </aside>
+    </div>
+  );
+}
+
+function PostComments({ postId, isVerified }: { postId: number; isVerified: boolean }) {
+  const utils = trpc.useUtils();
+  const commentsQuery = trpc.feed.comments.useQuery({ postId });
+  const [draft, setDraft] = useState("");
+
+  const addComment = trpc.feed.addComment.useMutation({
+    onSuccess: () => {
+      setDraft("");
+      utils.feed.comments.invalidate({ postId });
+      utils.feed.list.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteComment = trpc.feed.deleteComment.useMutation({
+    onSuccess: () => {
+      utils.feed.comments.invalidate({ postId });
+      utils.feed.list.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!isVerified) {
+      toast.info("Vérifiez votre compte pour commenter.");
+      return;
+    }
+    if (!draft.trim()) return;
+    addComment.mutate({ postId, body: draft.trim() });
+  };
+
+  const comments = commentsQuery.data ?? [];
+
+  return (
+    <div className="border-t border-[#EEEAE3] bg-[#FBFAF7] px-4 py-4 sm:px-5">
+      {commentsQuery.isLoading && <p className="text-xs text-[#9A9A98]">Chargement des commentaires...</p>}
+      <div className="space-y-3">
+        {comments.map((comment) => (
+          <div key={comment.id} className="flex gap-2.5">
+            <Avatar alt={comment.authorName ?? "Alumni"} src={storageUrl(comment.authorAvatar)} size="sm" />
+            <div className="min-w-0 flex-1 rounded-2xl bg-white px-3 py-2 shadow-sm">
+              <p className="text-xs font-bold text-[#18263E]">{comment.authorName}</p>
+              <p className="mt-0.5 whitespace-pre-wrap text-xs leading-5 text-[#3D495B]">{comment.body}</p>
+            </div>
+            <button onClick={() => deleteComment.mutate({ commentId: comment.id })} aria-label="Supprimer le commentaire" className="self-start text-[#B8BEC7] hover:text-[#9E323A]">
+              <X size={13} />
+            </button>
+          </div>
+        ))}
+        {!commentsQuery.isLoading && comments.length === 0 && <p className="text-xs text-[#9A9A98]">Aucun commentaire pour l'instant.</p>}
+      </div>
+      <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2">
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder={isVerified ? "Écrire un commentaire…" : "Vérifiez votre compte pour commenter"}
+          disabled={!isVerified}
+          className="h-9 min-w-0 flex-1 rounded-full border border-[#E4E5EA] bg-white px-3.5 text-xs outline-none disabled:opacity-60"
+        />
+        <button disabled={!isVerified || !draft.trim() || addComment.isPending} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#142640] text-white disabled:opacity-40">
+          <Send size={14} />
+        </button>
+      </form>
     </div>
   );
 }

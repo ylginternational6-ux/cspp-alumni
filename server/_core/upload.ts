@@ -5,14 +5,25 @@ import { requireActiveAccount } from "../permissions";
 import { storagePut } from "../storage";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 Mo
+const MAX_VIDEO_SIZE_BYTES = 60 * 1024 * 1024; // 60 Mo pour les vidéos de publication
 
 const ALLOWED_MIME_TYPES_BY_PURPOSE: Record<string, string[]> = {
   avatar: ["image/jpeg", "image/png", "image/webp"],
+  cover: ["image/jpeg", "image/png", "image/webp"],
+  post_media: ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime"],
   verification_document: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
   message_attachment: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
 };
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE_BYTES } });
+const MAX_SIZE_BYTES_BY_PURPOSE: Record<string, number> = {
+  avatar: MAX_FILE_SIZE_BYTES,
+  cover: MAX_FILE_SIZE_BYTES,
+  post_media: MAX_VIDEO_SIZE_BYTES,
+  verification_document: MAX_FILE_SIZE_BYTES,
+  message_attachment: MAX_FILE_SIZE_BYTES,
+};
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_VIDEO_SIZE_BYTES } });
 
 export const uploadRouter = Router();
 
@@ -45,6 +56,11 @@ uploadRouter.post("/", upload.single("file"), async (req, res) => {
     }
     if (!allowedMimeTypes.includes(file.mimetype)) {
       res.status(400).json({ error: "Type de fichier non autorisé pour cet usage." });
+      return;
+    }
+    const maxSize = MAX_SIZE_BYTES_BY_PURPOSE[purpose] ?? MAX_FILE_SIZE_BYTES;
+    if (file.size > maxSize) {
+      res.status(400).json({ error: `Fichier trop volumineux (maximum ${Math.round(maxSize / (1024 * 1024))} Mo pour cet usage).` });
       return;
     }
 

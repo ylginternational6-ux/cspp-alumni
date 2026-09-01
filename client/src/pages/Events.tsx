@@ -118,7 +118,7 @@ export default function Events() {
   );
 }
 
-function CreateEventModal({ onClose, onSubmit, isPending }: { onClose: () => void; isPending: boolean; onSubmit: (input: { title: string; description: string; location?: string; isOnline?: boolean; startsAt: Date; capacity?: number }) => void }) {
+export function CreateEventModal({ onClose, onSubmit, isPending }: { onClose: () => void; isPending: boolean; onSubmit: (input: { title: string; description: string; location?: string; isOnline?: boolean; startsAt: Date; capacity?: number }) => void }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");

@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gt, isNull, ne } from "drizzle-orm";
-import { alumniProfiles, conversationMembers, conversations, messageAttachments, messages, users } from "../../drizzle/schema";
+import { alumniProfiles, conversationMembers, conversations, messageAttachments, messages, promotions, users } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { areConnected } from "./connections";
 import { createNotification } from "./notifications";
@@ -32,6 +32,47 @@ export async function startOrGetDirectConversation(userId: number, otherUserId: 
   return conversationId;
 }
 
+/**
+ * Ouvre (ou crée) le groupe de discussion d'une promotion, et y ajoute
+ * automatiquement l'appelant s'il n'en fait pas encore partie. Un seul
+ * groupe existe par promotion (contrainte d'unicité sur promotionId).
+ */
+export async function getOrJoinPromotionConversation(userId: number, promotionId: number) {
+  const db = await getDb();
+  if (!db) throw new MessagingError("Base de données indisponible");
+
+  const [promotion] = await db.select().from(promotions).where(eq(promotions.id, promotionId)).limit(1);
+  if (!promotion) throw new MessagingError("Promotion introuvable.");
+
+  let conversationId: number;
+  const [existing] = await db.select().from(conversations).where(eq(conversations.promotionId, promotionId)).limit(1);
+  if (existing) {
+    conversationId = existing.id;
+  } else {
+    const title = promotion.label ?? `Promotion ${promotion.year}`;
+    const [{ id }] = await db.insert(conversations).values({ kind: "group", promotionId, title, createdBy: userId }).$returningId();
+    conversationId = id;
+  }
+
+  await db
+    .insert(conversationMembers)
+    .values({ conversationId, userId })
+    .onDuplicateKeyUpdate({ set: { leftAt: null } });
+
+  return conversationId;
+}
+
+export async function listConversationMembers(conversationId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({ userId: users.id, name: users.name, avatarStorageKey: alumniProfiles.avatarStorageKey, accountStatus: users.accountStatus })
+    .from(conversationMembers)
+    .innerJoin(users, eq(users.id, conversationMembers.userId))
+    .leftJoin(alumniProfiles, eq(alumniProfiles.userId, users.id))
+    .where(and(eq(conversationMembers.conversationId, conversationId), isNull(conversationMembers.leftAt)));
+}
+
 export async function listConversations(userId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -41,7 +82,7 @@ export async function listConversations(userId: number) {
   const results = [];
   for (const membership of memberships) {
     const [conversation] = await db.select().from(conversations).where(eq(conversations.id, membership.conversationId)).limit(1);
-    if (!conversation) continue;
+    if (!conversation || conversation.kind !== "direct") continue;
     const [other] = await db
       .select({ userId: users.id, name: users.name, avatarStorageKey: alumniProfiles.avatarStorageKey, accountStatus: users.accountStatus })
       .from(conversationMembers)
@@ -103,8 +144,8 @@ export async function sendMessage(userId: number, conversationId: number, input:
 
   await db.update(conversations).set({ lastMessageAt: new Date() }).where(eq(conversations.id, conversationId));
 
-  const [recipient] = await db.select().from(conversationMembers).where(and(eq(conversationMembers.conversationId, conversationId), ne(conversationMembers.userId, userId))).limit(1);
-  if (recipient) await createNotification(recipient.userId, "message", "Nouveau message", input.body?.slice(0, 140), "/messages");
+  const recipients = await db.select({ userId: conversationMembers.userId }).from(conversationMembers).where(and(eq(conversationMembers.conversationId, conversationId), ne(conversationMembers.userId, userId)));
+  await Promise.all(recipients.map((recipient) => createNotification(recipient.userId, "message", "Nouveau message", input.body?.slice(0, 140), "/messages")));
 
   return messageId;
 }

@@ -5,7 +5,7 @@ import { AdminPageHeader, AdminPanel, AdminStatCard } from "@/components/AdminPr
 import { trpc } from "@/lib/trpc";
 
 export default function AdminDashboard() {
-  const statsQuery = trpc.admin.dashboardStats.useQuery();
+  const statsQuery = trpc.admin.dashboardStats.useQuery(undefined, { refetchInterval: 10000 });
   const stats = statsQuery.data;
 
   const actions = [

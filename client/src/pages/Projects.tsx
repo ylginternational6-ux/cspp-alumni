@@ -88,7 +88,7 @@ export default function Projects() {
   );
 }
 
-function CreateProjectModal({ onClose, onSubmit, isPending }: { onClose: () => void; isPending: boolean; onSubmit: (input: { name: string; description?: string; visibility?: "network" | "promotion_only" | "private" }) => void }) {
+export function CreateProjectModal({ onClose, onSubmit, isPending }: { onClose: () => void; isPending: boolean; onSubmit: (input: { name: string; description?: string; visibility?: "network" | "promotion_only" | "private" }) => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<"network" | "promotion_only" | "private">("network");

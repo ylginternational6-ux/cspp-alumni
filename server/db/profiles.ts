@@ -23,6 +23,7 @@ export type UpdateProfileInput = {
   mentorAvailable?: boolean;
   mentorTopics?: string[];
   avatarStorageKey?: string;
+  coverStorageKey?: string;
 };
 
 /**
