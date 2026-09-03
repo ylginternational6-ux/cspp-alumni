@@ -1,10 +1,11 @@
 /** CSPP Alumni home: fil de publications réel, branché sur server/routers/feed.ts. */
 import { useState } from "react";
-import { Bookmark, CalendarDays, Image as ImageIcon, MessageCircle, Send, ThumbsUp, UserPlus, Video, X } from "lucide-react";
+import { CalendarDays, Image as ImageIcon, UserPlus, Video, X } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, EventDate, Panel } from "@/components/UiPrimitives";
+import { PostCard } from "@/components/PostCard";
 import { trpc } from "@/lib/trpc";
 import { storageUrl } from "@/lib/storageUrl";
 import { uploadFile } from "@/lib/upload";
@@ -17,17 +18,6 @@ function initialsFrom(name?: string | null) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
-}
-
-function formatRelativeTime(date: string | Date) {
-  const diffMs = Date.now() - new Date(date).getTime();
-  const minutes = Math.round(diffMs / 60000);
-  if (minutes < 1) return "à l'instant";
-  if (minutes < 60) return `il y a ${minutes} min`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `il y a ${hours} h`;
-  const days = Math.round(hours / 24);
-  return `il y a ${days} j`;
 }
 
 export default function Home() {
@@ -43,7 +33,6 @@ export default function Home() {
   const [draft, setDraft] = useState("");
   const [pendingMedia, setPendingMedia] = useState<{ storageKey: string; mimeType: string } | null>(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  const [openComments, setOpenComments] = useState<Record<number, boolean>>({});
 
   const createPost = trpc.feed.create.useMutation({
     onSuccess: () => {
@@ -51,21 +40,6 @@ export default function Home() {
       setPendingMedia(null);
       utils.feed.list.invalidate();
       toast.success("Publication partagée avec le réseau.");
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
-  const reactMutation = trpc.feed.react.useMutation({
-    onSuccess: () => utils.feed.list.invalidate(),
-    onError: (error) => toast.error(error.message),
-  });
-
-  const savedIdsQuery = trpc.saved.ids.useQuery();
-  const savedPostIds = new Set((savedIdsQuery.data ?? []).filter((row) => row.itemType === "post").map((row) => row.itemId));
-  const toggleSaved = trpc.saved.toggle.useMutation({
-    onSuccess: (data) => {
-      utils.saved.ids.invalidate();
-      toast.success(data.saved ? "Publication enregistrée." : "Publication retirée des enregistrés.");
     },
     onError: (error) => toast.error(error.message),
   });
@@ -155,57 +129,7 @@ export default function Home() {
         {!feedQuery.isLoading && posts.length === 0 && <Panel className="p-6 text-center text-sm text-[#707787]">Aucune publication pour le moment. Soyez le premier à partager une nouvelle avec le réseau.</Panel>}
 
         {posts.map((post) => (
-          <article key={post.id} className="overflow-hidden rounded-xl border border-[#E6E1D9] bg-white shadow-[0_4px_15px_rgba(10,32,63,0.045)]">
-            <div className="p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 gap-3">
-                  <Avatar alt={post.authorName ?? "Alumni"} src={storageUrl(post.authorAvatar)} />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <h2 className="truncate text-sm font-bold text-[#101B31]">{post.authorName ?? "Alumni CSPP"}</h2>
-                      {post.authorAccountStatus === "verified" ? (
-                        <span className="grid h-4 w-4 place-items-center rounded-full bg-[#2776CE] text-[9px] text-white">✓</span>
-                      ) : (
-                        <span className="rounded bg-[#F1F3F8] px-1.5 py-0.5 text-[9px] font-bold text-[#707787]">En cours de validation</span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-[10px] text-[#9B9DA5]">{formatRelativeTime(post.createdAt)}</p>
-                  </div>
-                </div>
-              </div>
-              <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6 text-[#2A3446]">{post.body.trim()}</p>
-              {post.attachmentStorageKey &&
-                (post.attachmentMimeType?.startsWith("video/") ? (
-                  <video src={storageUrl(post.attachmentStorageKey)} controls className="mt-4 max-h-[480px] w-full rounded-xl bg-black" />
-                ) : (
-                  <img src={storageUrl(post.attachmentStorageKey)} alt="Média de la publication" className="mt-4 max-h-[480px] w-full rounded-xl object-cover" />
-                ))}
-            </div>
-            <div className="flex items-center gap-5 px-4 pb-4 pt-3 sm:px-5">
-              <button
-                onClick={() => (isVerified ? reactMutation.mutate({ postId: post.id, kind: "like" }) : toast.info("Vérifiez votre compte pour réagir."))}
-                className={`flex items-center gap-1.5 text-xs font-semibold transition ${post.viewerReaction ? "text-[#172F54]" : "text-[#737983] hover:text-[#172F54]"}`}
-              >
-                <ThumbsUp size={19} fill={post.viewerReaction ? "currentColor" : "none"} />
-                {post.reactionCount}
-              </button>
-              <button onClick={() => setOpenComments((state) => ({ ...state, [post.id]: !state[post.id] }))} className="flex items-center gap-1.5 text-xs font-semibold text-[#737983] transition hover:text-[#172F54]">
-                <MessageCircle size={19} />
-                {post.commentCount}
-              </button>
-              <button onClick={() => toast.success("Le lien de cette publication a été copié.")} aria-label="Partager" className="text-[#737983] transition hover:text-[#172F54]">
-                <Send size={19} />
-              </button>
-              <button
-                onClick={() => (isVerified ? toggleSaved.mutate({ itemType: "post", itemId: post.id }) : toast.info("Vérifiez votre compte pour enregistrer une publication."))}
-                aria-label="Enregistrer"
-                className={`ml-auto transition ${savedPostIds.has(post.id) ? "text-[#8B661D]" : "text-[#737983] hover:text-[#172F54]"}`}
-              >
-                <Bookmark size={19} fill={savedPostIds.has(post.id) ? "currentColor" : "none"} />
-              </button>
-            </div>
-            {openComments[post.id] && <PostComments postId={post.id} isVerified={isVerified} />}
-          </article>
+          <PostCard key={post.id} post={post} isVerified={isVerified} />
         ))}
       </section>
 
@@ -277,70 +201,3 @@ export default function Home() {
   );
 }
 
-function PostComments({ postId, isVerified }: { postId: number; isVerified: boolean }) {
-  const utils = trpc.useUtils();
-  const commentsQuery = trpc.feed.comments.useQuery({ postId });
-  const [draft, setDraft] = useState("");
-
-  const addComment = trpc.feed.addComment.useMutation({
-    onSuccess: () => {
-      setDraft("");
-      utils.feed.comments.invalidate({ postId });
-      utils.feed.list.invalidate();
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
-  const deleteComment = trpc.feed.deleteComment.useMutation({
-    onSuccess: () => {
-      utils.feed.comments.invalidate({ postId });
-      utils.feed.list.invalidate();
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!isVerified) {
-      toast.info("Vérifiez votre compte pour commenter.");
-      return;
-    }
-    if (!draft.trim()) return;
-    addComment.mutate({ postId, body: draft.trim() });
-  };
-
-  const comments = commentsQuery.data ?? [];
-
-  return (
-    <div className="border-t border-[#EEEAE3] bg-[#FBFAF7] px-4 py-4 sm:px-5">
-      {commentsQuery.isLoading && <p className="text-xs text-[#9A9A98]">Chargement des commentaires...</p>}
-      <div className="space-y-3">
-        {comments.map((comment) => (
-          <div key={comment.id} className="flex gap-2.5">
-            <Avatar alt={comment.authorName ?? "Alumni"} src={storageUrl(comment.authorAvatar)} size="sm" />
-            <div className="min-w-0 flex-1 rounded-2xl bg-white px-3 py-2 shadow-sm">
-              <p className="text-xs font-bold text-[#18263E]">{comment.authorName}</p>
-              <p className="mt-0.5 whitespace-pre-wrap text-xs leading-5 text-[#3D495B]">{comment.body}</p>
-            </div>
-            <button onClick={() => deleteComment.mutate({ commentId: comment.id })} aria-label="Supprimer le commentaire" className="self-start text-[#B8BEC7] hover:text-[#9E323A]">
-              <X size={13} />
-            </button>
-          </div>
-        ))}
-        {!commentsQuery.isLoading && comments.length === 0 && <p className="text-xs text-[#9A9A98]">Aucun commentaire pour l'instant.</p>}
-      </div>
-      <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2">
-        <input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder={isVerified ? "Écrire un commentaire…" : "Vérifiez votre compte pour commenter"}
-          disabled={!isVerified}
-          className="h-9 min-w-0 flex-1 rounded-full border border-[#E4E5EA] bg-white px-3.5 text-xs outline-none disabled:opacity-60"
-        />
-        <button disabled={!isVerified || !draft.trim() || addComment.isPending} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#142640] text-white disabled:opacity-40">
-          <Send size={14} />
-        </button>
-      </form>
-    </div>
-  );
-}

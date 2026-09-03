@@ -46,6 +46,22 @@ export async function listFeed(viewerId: number, cursor?: number) {
   return { items, nextCursor: hasMore ? items[items.length - 1]?.id ?? null : null };
 }
 
+/** Récupère une publication précise (indépendamment de la pagination du fil) — utile pour un lien direct ou un élément enregistré. */
+export async function getPostById(postId: number, viewerId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select({ id: posts.id, authorId: posts.authorId, body: posts.body, visibility: posts.visibility, attachmentStorageKey: posts.attachmentStorageKey, attachmentMimeType: posts.attachmentMimeType, createdAt: posts.createdAt, editedAt: posts.editedAt, hiddenAt: posts.hiddenAt, hiddenReason: posts.hiddenReason, deletedAt: posts.deletedAt, authorName: users.name, authorAccountStatus: users.accountStatus, authorAvatar: alumniProfiles.avatarStorageKey })
+    .from(posts)
+    .innerJoin(users, eq(users.id, posts.authorId))
+    .leftJoin(alumniProfiles, eq(alumniProfiles.userId, posts.authorId))
+    .where(and(eq(posts.id, postId), isNull(posts.deletedAt)))
+    .limit(1);
+  if (!row) return null;
+  const [hydrated] = await hydratePosts(db, [row], viewerId);
+  return hydrated;
+}
+
 export async function updatePost(userId: number, postId: number, body: string) {
   const db = await getDb();
   if (!db) throw new FeedError("Base de données indisponible");

@@ -155,4 +155,7 @@ export async function markConversationRead(userId: number, conversationId: numbe
   const [lastMessage] = await db.select().from(messages).where(eq(messages.conversationId, conversationId)).orderBy(desc(messages.id)).limit(1);
   if (!lastMessage) return;
   await db.update(conversationMembers).set({ lastReadMessageId: lastMessage.id }).where(and(eq(conversationMembers.conversationId, conversationId), eq(conversationMembers.userId, userId)));
+  // Synchronise la cloche : avoir lu ses messages efface les notifications "nouveau message" en attente.
+  const { markNotificationsByTypeRead } = await import("./notifications");
+  await markNotificationsByTypeRead(userId, ["message"]);
 }

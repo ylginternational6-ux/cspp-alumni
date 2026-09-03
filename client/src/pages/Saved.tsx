@@ -68,18 +68,20 @@ export default function Saved() {
             {savedOpportunities.map(({ saved, opportunity }) => {
               if (!opportunity) return null;
               return (
-                <Panel key={saved.id} className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <span className="rounded-full bg-[#EEF1F5] px-2 py-1 text-[10px] font-extrabold text-[#536071]">{typeLabels[opportunity.type] ?? opportunity.type}</span>
-                      <h3 className="mt-3 font-editorial text-[25px] font-semibold leading-5 text-[#10203A]">{opportunity.title}</h3>
-                      <p className="mt-1 text-xs font-bold text-[#5D6877]">{opportunity.organization ?? "—"}</p>
+                <Link key={saved.id} href={`/opportunites?id=${opportunity.id}`}>
+                  <Panel className="p-4 transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(10,32,63,0.08)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="rounded-full bg-[#EEF1F5] px-2 py-1 text-[10px] font-extrabold text-[#536071]">{typeLabels[opportunity.type] ?? opportunity.type}</span>
+                        <h3 className="mt-3 font-editorial text-[25px] font-semibold leading-5 text-[#10203A]">{opportunity.title}</h3>
+                        <p className="mt-1 text-xs font-bold text-[#5D6877]">{opportunity.organization ?? "—"}</p>
+                      </div>
+                      <button onClick={(e) => { e.preventDefault(); toggleSaved.mutate({ itemType: "opportunity", itemId: opportunity.id }); }} aria-label="Retirer des enregistrés">
+                        <Bookmark size={17} fill="currentColor" className="text-[#A47B2A]" />
+                      </button>
                     </div>
-                    <button onClick={() => toggleSaved.mutate({ itemType: "opportunity", itemId: opportunity.id })} aria-label="Retirer des enregistrés">
-                      <Bookmark size={17} fill="currentColor" className="text-[#A47B2A]" />
-                    </button>
-                  </div>
-                </Panel>
+                  </Panel>
+                </Link>
               );
             })}
             {savedOpportunities.length === 0 && !savedQuery.isLoading && <p className="text-xs text-[#9A9A98]">Aucune opportunité enregistrée.</p>}
@@ -91,14 +93,16 @@ export default function Saved() {
                 {savedPosts.map(({ saved, post }) => {
                   if (!post) return null;
                   return (
-                    <Panel key={saved.id} className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-sm leading-6 text-[#485568]">{post.body}</p>
-                        <button onClick={() => toggleSaved.mutate({ itemType: "post", itemId: post.id })} aria-label="Retirer des enregistrés">
-                          <Bookmark size={17} fill="currentColor" className="shrink-0 text-[#A47B2A]" />
-                        </button>
-                      </div>
-                    </Panel>
+                    <Link key={saved.id} href={`/publications/${post.id}`}>
+                      <Panel className="p-4 transition hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(10,32,63,0.08)]">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="line-clamp-3 text-sm leading-6 text-[#485568]">{post.body}</p>
+                          <button onClick={(e) => { e.preventDefault(); toggleSaved.mutate({ itemType: "post", itemId: post.id }); }} aria-label="Retirer des enregistrés">
+                            <Bookmark size={17} fill="currentColor" className="shrink-0 text-[#A47B2A]" />
+                          </button>
+                        </div>
+                      </Panel>
+                    </Link>
                   );
                 })}
               </div>

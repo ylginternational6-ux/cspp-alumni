@@ -12,6 +12,8 @@ function toTrpcError(error: unknown): never {
 export const feedRouter = router({
   list: protectedProcedure.input(z.object({ cursor: z.number().int().optional() })).query(({ ctx, input }) => db.listFeed(ctx.user.id, input.cursor)),
 
+  getById: protectedProcedure.input(z.object({ postId: z.number().int().positive() })).query(({ ctx, input }) => db.getPostById(input.postId, ctx.user.id)),
+
   create: verifiedProcedure
     .input(z.object({ body: z.string().min(1).max(3000), visibility: z.enum(["network", "promotion_only", "public"]).optional(), attachmentStorageKey: z.string().max(512).optional(), attachmentMimeType: z.string().max(100).optional() }))
     .mutation(async ({ ctx, input }) => ({ postId: await db.createPost(ctx.user.id, input) })),

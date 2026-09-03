@@ -1,4 +1,5 @@
 /** CSPP Alumni network: gestion réelle des demandes de connexion, branchée sur server/routers/network.ts. */
+import { useEffect } from "react";
 import { Check, Clock, UserRound, UserX, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, PageIntro, Panel } from "@/components/UiPrimitives";
@@ -9,6 +10,15 @@ export default function Network() {
   const utils = trpc.useUtils();
   const pendingQuery = trpc.network.pending.useQuery(undefined, { refetchInterval: 10000 });
   const connectionsQuery = trpc.network.list.useQuery();
+
+  // Consulter cette page efface les notifications de demande/acceptation de connexion en attente.
+  const markByType = trpc.notifications.markByType.useMutation({
+    onSuccess: () => utils.notifications.unreadCount.invalidate(),
+  });
+  useEffect(() => {
+    markByType.mutate({ types: ["connection_request", "connection_accepted"] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const respond = trpc.network.respond.useMutation({
     onSuccess: (_data, variables) => {

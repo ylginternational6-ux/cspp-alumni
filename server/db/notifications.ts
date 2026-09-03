@@ -33,3 +33,16 @@ export async function markAllRead(userId: number) {
   if (!db) return;
   await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
 }
+
+/**
+ * Marque comme lues toutes les notifications d'un ou plusieurs types donnés.
+ * Utile pour synchroniser la cloche avec le fait d'avoir déjà consulté le
+ * contenu concerné ailleurs (ex. ouvrir la messagerie efface les
+ * notifications "message" sans qu'il faille cliquer la notification elle-même).
+ */
+export async function markNotificationsByTypeRead(userId: number, types: string[]) {
+  const db = await getDb();
+  if (!db || types.length === 0) return;
+  const { inArray } = await import("drizzle-orm");
+  await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.userId, userId), isNull(notifications.readAt), inArray(notifications.type, types)));
+}

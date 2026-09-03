@@ -47,7 +47,7 @@ export default function AdminVerifications() {
     <div>
       <AdminPageHeader eyebrow="Contrôle des accès" title="Vérifications en attente" description="Examinez les demandes d'inscription et vérifiez les justificatifs avant d'accorder l'accès au réseau." />
       <MobileQueryBar value={term} onChange={setTerm} placeholder="Rechercher une demande…" />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(350px,1.15fr)]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(350px,1.15fr)]">
         <section>
           <AdminPanel className="hidden p-4 lg:block">
             <label className="relative flex-1">
@@ -83,7 +83,7 @@ export default function AdminVerifications() {
           ) : null}
         </section>
         {selected ? (
-          <AdminPanel className="hidden overflow-hidden xl:sticky xl:top-24 xl:block">
+          <AdminPanel className="hidden overflow-hidden lg:sticky lg:top-24 lg:block">
             <VerificationDetail dossier={selected} documents={detailQuery.data?.documents ?? []} onDecide={(decision, reason) => decide.mutate({ userId: selected.userId, decision, reason })} />
           </AdminPanel>
         ) : null}

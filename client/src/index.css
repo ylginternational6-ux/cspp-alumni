@@ -2,9 +2,72 @@
 @import "tw-animate-css";
 
 /* CSPP Alumni system: contemporary social utility wrapped in editorial, institutional warmth. */
+:root {
+  --background: #fdfbf7;
+  --foreground: #172033;
+  --card: #ffffff;
+  --card-foreground: #172033;
+  --popover: #ffffff;
+  --popover-foreground: #172033;
+  --primary: #142640;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f3f8;
+  --secondary-foreground: #172033;
+  --muted: #f1f3f8;
+  --muted-foreground: #707787;
+  --accent: #efcb80;
+  --accent-foreground: #142640;
+  --destructive: #9e323a;
+  --destructive-foreground: #ffffff;
+  --border: #e6e1d9;
+  --input: #ddd8d0;
+  --ring: #142640;
+  --radius: 0.625rem;
+  --sidebar: #fdfbf7;
+  --sidebar-foreground: #172033;
+  --sidebar-primary: #142640;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f3f8;
+  --sidebar-accent-foreground: #172033;
+  --sidebar-border: #e6e1d9;
+  --sidebar-ring: #142640;
+}
+
 @theme inline {
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-editorial: "EB Garamond", Georgia, serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 :root { font-synthesis: none; }

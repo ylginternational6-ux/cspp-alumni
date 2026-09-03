@@ -2,11 +2,14 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
+import { RequireAuth, RequireAdmin } from "@/components/RouteGuards";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import PostDetail from "./pages/PostDetail";
+import Notifications from "./pages/Notifications";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Directory from "./pages/Directory";
@@ -31,10 +34,25 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminOpportunityCreate from "./pages/admin/AdminOpportunityCreate";
 import Login from "./pages/Login";
 
-function Shell({ component: Component }: { component: React.ComponentType }) { return <AppLayout><Component /></AppLayout>; }
-function AdminShell({ component: Component }: { component: React.ComponentType }) { return <AdminLayout><Component /></AdminLayout>; }
+function Shell({ component: Component }: { component: React.ComponentType }) {
+  return (
+    <RequireAuth>
+      <AppLayout>
+        <Component />
+      </AppLayout>
+    </RequireAuth>
+  );
+}
+function AdminShell({ component: Component }: { component: React.ComponentType }) {
+  return (
+    <RequireAdmin>
+      <AdminLayout>
+        <Component />
+      </AdminLayout>
+    </RequireAdmin>
+  );
+}
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return <Switch>
     <Route path="/admin/opportunities/new" component={() => <AdminShell component={AdminOpportunityCreate} />} />
     <Route path="/admin/alumni" component={() => <AdminShell component={AdminAlumni} />} />
@@ -51,6 +69,8 @@ function Router() {
     <Route path="/admin" component={() => <AdminShell component={AdminDashboard} />} />
     <Route path="/login" component={Login} />
     <Route path="/" component={() => <Shell component={Home} />} />
+    <Route path="/publications/:id" component={() => <Shell component={PostDetail} />} />
+    <Route path="/notifications" component={() => <Shell component={Notifications} />} />
     <Route path="/network" component={() => <Shell component={Network} />} />
     <Route path="/alumnis" component={() => <Shell component={Directory} />} />
     <Route path="/promotions/:id" component={() => <Shell component={PromotionDetail} />} />

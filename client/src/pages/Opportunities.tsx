@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { Bookmark, Building2, MapPin, Search, WalletCards, X } from "lucide-react";
 import { toast } from "sonner";
+import { useSearch } from "wouter";
 import { MobileDetailScreen } from "@/components/MobileDetailScreen";
 import { MobileQueryBar } from "@/components/MobileQueryControls";
 import { PageIntro, Panel } from "@/components/UiPrimitives";
@@ -20,10 +21,12 @@ export default function Opportunities() {
   const { user } = useAuth();
   const isVerified = user?.accountStatus === "verified";
   const utils = trpc.useUtils();
+  const search = useSearch();
+  const preselectedId = Number(new URLSearchParams(search).get("id")) || null;
 
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(preselectedId);
   const [term, setTerm] = useState("");
-  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(Boolean(preselectedId));
   const [showCreate, setShowCreate] = useState(false);
 
   const listQuery = trpc.opportunities.listPublished.useQuery();
@@ -82,7 +85,7 @@ export default function Opportunities() {
         }
       />
       <MobileQueryBar value={term} onChange={setTerm} placeholder="Métier, entreprise, localisation…" />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.88fr)_minmax(340px,1.12fr)]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.88fr)_minmax(340px,1.12fr)]">
         <section>
           <div className="relative mb-4 hidden xl:block">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#777F8A]" size={19} />
@@ -114,7 +117,7 @@ export default function Opportunities() {
           )}
         </section>
         {current ? (
-          <Panel className="hidden h-fit overflow-hidden xl:block">
+          <Panel className="hidden h-fit overflow-hidden lg:block">
             <OpportunityDetail opportunity={current} saved={savedSet.has(current.id)} onToggleSaved={() => toggleSaved.mutate({ itemType: "opportunity", itemId: current.id })} />
           </Panel>
         ) : null}

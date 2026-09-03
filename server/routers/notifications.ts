@@ -13,4 +13,8 @@ export const notificationsRouter = router({
     await db.markAllRead(ctx.user.id);
     return { success: true } as const;
   }),
+  markByType: protectedProcedure.input(z.object({ types: z.array(z.string()).min(1) })).mutation(async ({ ctx, input }) => {
+    await db.markNotificationsByTypeRead(ctx.user.id, input.types);
+    return { success: true } as const;
+  }),
 });
