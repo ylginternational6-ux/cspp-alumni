@@ -2,6 +2,7 @@
 import { Paperclip, Plus, Search, Send, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 import { Avatar, PageIntro, Panel } from "@/components/UiPrimitives";
 import { storageUrl } from "@/lib/storageUrl";
 import { uploadFile } from "@/lib/upload";
@@ -9,6 +10,7 @@ import { MobileDetailScreen } from "@/components/MobileDetailScreen";
 import { MobileQueryBar } from "@/components/MobileQueryControls";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useProfileOverlay } from "@/contexts/ProfileOverlayContext";
 
 function formatTime(date: string | Date) {
   return new Date(date).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -18,6 +20,8 @@ export default function Messages() {
   const { user } = useAuth();
   const isVerified = user?.accountStatus === "verified";
   const utils = trpc.useUtils();
+  const { openProfile } = useProfileOverlay();
+  const [location, setLocation] = useLocation();
 
   const [term, setTerm] = useState("");
   const [contactTerm, setContactTerm] = useState("");
@@ -28,6 +32,18 @@ export default function Messages() {
 
   const conversationsQuery = trpc.messaging.conversations.useQuery(undefined, { refetchInterval: 8000 });
   const connectionsQuery = trpc.network.list.useQuery();
+
+  // Ouverture directe d'une conversation depuis ailleurs dans l'app (ex: bouton
+  // "Envoyer un message" sur une fiche profil) via /messages?c=<conversationId>.
+  useEffect(() => {
+    const requestedId = Number(new URLSearchParams(location.split("?")[1] ?? "").get("c"));
+    if (requestedId) {
+      setSelectedConversationId(requestedId);
+      if (window.innerWidth < 1024) setMobileChat(true);
+      setLocation("/messages", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
 
   const rows = useMemo(() => {
     const list = conversationsQuery.data ?? [];
@@ -76,8 +92,8 @@ export default function Messages() {
         <Plus size={17} /> Nouveau message
       </button>
       <MobileQueryBar value={term} onChange={setTerm} placeholder="Rechercher une conversation…" />
-      <Panel className="grid min-h-[570px] overflow-hidden lg:grid-cols-[300px_1fr]">
-        <aside className="border-b border-[#E8E3DA] bg-[#FCFBF8] lg:border-b-0 lg:border-r">
+      <Panel className="grid overflow-hidden lg:h-[min(72dvh,640px)] lg:min-h-[480px] lg:grid-cols-[300px_1fr]">
+        <aside className="max-h-[60dvh] overflow-y-auto border-b border-[#E8E3DA] bg-[#FCFBF8] lg:h-full lg:max-h-none lg:border-b-0 lg:border-r">
           <div className="hidden p-4 lg:block">
             <div className="mb-3 flex items-center justify-between">
               <b className="text-[11px] uppercase tracking-[.13em] text-[#897331]">Conversations</b>
@@ -105,7 +121,7 @@ export default function Messages() {
             </button>
           ))}
         </aside>
-        <Chat conversationId={activeRow?.conversation.id ?? null} otherName={activeRow?.other?.name ?? null} className="hidden lg:flex" />
+        <Chat conversationId={activeRow?.conversation.id ?? null} otherName={activeRow?.other?.name ?? null} otherUserId={activeRow?.other?.userId ?? null} otherAvatar={activeRow?.other?.avatarStorageKey ?? null} className="hidden lg:flex" />
       </Panel>
 
       {desktopPicker ? (
@@ -121,8 +137,23 @@ export default function Messages() {
         </MobileDetailScreen>
       ) : null}
       {mobileChat && activeRow ? (
-        <MobileDetailScreen title={activeRow.other?.name ?? "Conversation"} subtitle="Conversation" onBack={() => setMobileChat(false)} headerRight={<Avatar alt={activeRow.other?.name ?? "Alumni"} src={storageUrl(activeRow.other?.avatarStorageKey)} size="sm" />}>
-          <Chat conversationId={activeRow.conversation.id} otherName={activeRow.other?.name ?? null} className="flex" />
+        <MobileDetailScreen
+          title={activeRow.other?.name ?? "Conversation"}
+          subtitle="Conversation"
+          onBack={() => setMobileChat(false)}
+          chatLayout
+          onTitleClick={activeRow.other?.userId ? () => openProfile(activeRow.other!.userId) : undefined}
+          headerRight={
+            activeRow.other?.userId ? (
+              <button onClick={() => openProfile(activeRow.other!.userId)} aria-label={`Voir le profil de ${activeRow.other?.name ?? "cette personne"}`} className="rounded-full transition active:scale-95">
+                <Avatar alt={activeRow.other?.name ?? "Alumni"} src={storageUrl(activeRow.other?.avatarStorageKey)} size="sm" />
+              </button>
+            ) : (
+              <Avatar alt={activeRow.other?.name ?? "Alumni"} src={storageUrl(activeRow.other?.avatarStorageKey)} size="sm" />
+            )
+          }
+        >
+          <Chat conversationId={activeRow.conversation.id} otherName={activeRow.other?.name ?? null} otherUserId={activeRow.other?.userId ?? null} otherAvatar={activeRow.other?.avatarStorageKey ?? null} className="flex" />
         </MobileDetailScreen>
       ) : null}
     </div>
@@ -164,8 +195,9 @@ function Picker({ contacts, term, setTerm, choose, close }: { contacts: Array<{ 
   );
 }
 
-function Chat({ conversationId, otherName, className }: { conversationId: number | null; otherName: string | null; className: string }) {
+function Chat({ conversationId, otherName, otherUserId, otherAvatar, className }: { conversationId: number | null; otherName: string | null; otherUserId?: number | null; otherAvatar?: string | null; className: string }) {
   const { user } = useAuth();
+  const { openProfile } = useProfileOverlay();
   const utils = trpc.useUtils();
   const messagesQuery = trpc.messaging.messages.useQuery({ conversationId: conversationId ?? 0 }, { enabled: Boolean(conversationId), refetchInterval: 4000 });
   const markRead = trpc.messaging.markRead.useMutation();
@@ -208,7 +240,7 @@ function Chat({ conversationId, otherName, className }: { conversationId: number
 
   if (!conversationId) {
     return (
-      <section className={`${className} min-h-[400px] flex-col items-center justify-center p-6 text-center text-sm text-[#6C7684]`}>
+      <section className={`${className} h-full min-h-[300px] flex-col items-center justify-center p-6 text-center text-sm text-[#6C7684]`}>
         Choisissez une conversation ou démarrez-en une nouvelle depuis vos connexions.
       </section>
     );
@@ -223,14 +255,21 @@ function Chat({ conversationId, otherName, className }: { conversationId: number
   };
 
   return (
-    <section className={`${className} min-h-[400px] flex-col`}>
-      <header className="hidden items-center gap-3 border-b border-[#E8E3DA] px-5 py-3 lg:flex">
-        <Avatar alt={otherName ?? "Alumni"} size="sm" />
-        <div>
-          <b className="text-sm text-[#142039]">{otherName ?? "Conversation"}</b>
-        </div>
+    <section className={`${className} h-full min-h-0 flex-col`}>
+      <header className="hidden shrink-0 items-center gap-3 border-b border-[#E8E3DA] px-5 py-3 lg:flex">
+        {otherUserId ? (
+          <button onClick={() => openProfile(otherUserId)} className="flex min-w-0 items-center gap-3 text-left transition hover:opacity-80">
+            <Avatar alt={otherName ?? "Alumni"} src={storageUrl(otherAvatar)} size="sm" />
+            <b className="truncate text-sm text-[#142039] hover:underline">{otherName ?? "Conversation"}</b>
+          </button>
+        ) : (
+          <>
+            <Avatar alt={otherName ?? "Alumni"} size="sm" />
+            <b className="text-sm text-[#142039]">{otherName ?? "Conversation"}</b>
+          </>
+        )}
       </header>
-      <div className="flex-1 space-y-3 overflow-y-auto bg-[#FDFBF7] p-5">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#FDFBF7] p-5">
         {messages.length === 0 && <p className="mt-16 text-center text-sm text-[#6C7684]">Commencez la conversation avec {otherName?.split(" ")[0] ?? "cette personne"}.</p>}
         {messages.map((message) => {
           const isMine = message.senderId === user?.id;
@@ -246,7 +285,7 @@ function Chat({ conversationId, otherName, className }: { conversationId: number
           );
         })}
       </div>
-      <form onSubmit={handleSend} className="border-t border-[#E8E3DA] bg-white p-3">
+      <form onSubmit={handleSend} className="shrink-0 border-t border-[#E8E3DA] bg-white p-3">
         {pendingAttachment && (
           <div className="mb-2 flex items-center gap-2 rounded-lg bg-[#F1F3F8] px-3 py-2 text-[11px] font-bold text-[#3D495B]">
             <Paperclip size={13} /> {pendingAttachment.originalName}

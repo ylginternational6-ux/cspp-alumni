@@ -38,4 +38,12 @@ export const ENV = {
   smtpPassword: process.env.SMTP_PASSWORD,
   smtpFrom: process.env.SMTP_FROM || "CSPP Alumni <no-reply@cspp-alumni.local>",
   appBaseUrl: process.env.APP_BASE_URL || "http://localhost:3000",
+
+  // Notifications push (Web Push / VAPID). Une paire de clés de démonstration
+  // est fournie par défaut pour que les notifications marchent immédiatement
+  // en local ; générez la vôtre en production avec `npx web-push generate-vapid-keys`
+  // et renseignez VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY (voir server/push.ts).
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY || "BF6fwx3nucJGT4ickFulWIYkhp6emJTShj6ZmfCMXPAtu1gDpOZ88Vwuv0vz5IWRs-2yIh8hfva1O9VOctIQV20",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || "JKYwfy0MZH2VulKfc8LrWPSapOYNdExjjSd19MsDq3c",
+  vapidSubject: process.env.VAPID_SUBJECT || "mailto:contact@cspp-alumni.local",
 };

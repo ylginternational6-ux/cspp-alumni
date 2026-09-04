@@ -39,7 +39,12 @@ export default function Login() {
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
 
-  const onAuthSuccess = async () => {
+  const onAuthSuccess = async (data: { success: true; user: NonNullable<ReturnType<typeof utils.auth.me.getData>> }) => {
+    // On pose directement l'utilisateur renvoyé par le serveur dans le cache
+    // de la requête `auth.me`, plutôt que de se contenter d'un `invalidate()`
+    // (qui ne garantit pas que la donnée fraîche soit là avant la navigation
+    // vers la page protégée juste après — d'où le besoin d'un 2e essai).
+    utils.auth.me.setData(undefined, data.user);
     await utils.auth.me.invalidate();
     toast.success("Connexion réussie.");
     setLocation("/");

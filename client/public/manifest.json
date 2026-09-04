@@ -1,0 +1,13 @@
+{
+  "name": "CSPP Alumni",
+  "short_name": "CSPP Alumni",
+  "description": "Le réseau des diplômés CSPP.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDFBF7",
+  "theme_color": "#0A1931",
+  "icons": [
+    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,8 +1,9 @@
 /** CSPP Alumni notification bell: composant partagé entre l'espace membre et l'espace admin, branché sur server/routers/notifications.ts. */
-import { Bell } from "lucide-react";
+import { Bell, BellPlus } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 function formatRelativeTime(date: string | Date) {
@@ -17,6 +18,7 @@ function formatRelativeTime(date: string | Date) {
 
 export function NotificationBell({ buttonClassName }: { buttonClassName?: string }) {
   const utils = trpc.useUtils();
+  const push = usePushNotifications();
   const unreadCountQuery = trpc.notifications.unreadCount.useQuery(undefined, { refetchInterval: 15000 });
   const notificationsQuery = trpc.notifications.list.useQuery({}, { refetchInterval: 15000 });
 
@@ -70,6 +72,11 @@ export function NotificationBell({ buttonClassName }: { buttonClassName?: string
             </Link>
           ))}
         </div>
+        {push.supported && !push.subscribed && push.permission !== "denied" && !push.checking && (
+          <button onClick={() => push.enable()} disabled={push.busy} className="flex w-full items-center gap-2 border-t border-[#EEEAE3] px-4 py-2.5 text-left text-xs font-bold text-[#8B661D] hover:bg-[#FAF7F0]">
+            <BellPlus size={15} /> {push.busy ? "Activation..." : "Activer les notifications sur ce téléphone"}
+          </button>
+        )}
         <Link href="/notifications" className="block border-t border-[#EEEAE3] px-4 py-2.5 text-center text-xs font-bold text-[#173A67] hover:bg-[#FAF7F0]">
           Voir toutes les notifications
         </Link>

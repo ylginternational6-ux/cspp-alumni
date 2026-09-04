@@ -6,6 +6,13 @@ export async function createNotification(userId: number, type: string, title: st
   const db = await getDb();
   if (!db) return;
   await db.insert(notifications).values({ userId, type, title, body: body ?? null, link: link ?? null });
+
+  // Notification push "réelle" (alerte système, même app/onglet fermé). En
+  // best-effort : importé dynamiquement pour éviter tout risque de cycle
+  // d'import, et jamais bloquant/throwant pour l'appelant.
+  void import("../push")
+    .then(({ sendPushToUser }) => sendPushToUser(userId, { title, body, link, tag: type }))
+    .catch((error) => console.error("[push] import échoué :", error));
 }
 
 export async function listNotifications(userId: number, onlyUnread = false) {

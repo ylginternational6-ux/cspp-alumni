@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { uploadFile, type UploadResult } from "@/lib/upload";
 
 function Toggle({ on, setOn }: { on: boolean; setOn: (value: boolean) => void }) {
@@ -21,6 +22,7 @@ function Toggle({ on, setOn }: { on: boolean; setOn: (value: boolean) => void })
 export default function Settings() {
   const { user } = useAuth();
   const utils = trpc.useUtils();
+  const push = usePushNotifications();
   const overviewQuery = trpc.account.overview.useQuery();
   const myVerificationQuery = trpc.account.myVerification.useQuery();
   const [emailNotifs, setEmailNotifs] = useState(true);
@@ -183,6 +185,22 @@ export default function Settings() {
             </div>
           </div>
           <div className="mt-5 divide-y divide-[#EEEAE3] border-t border-[#EEEAE3]">
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div>
+                <p className="text-xs font-bold text-[#3D4B5E]">Notifications push sur cet appareil</p>
+                <p className="mt-1 text-[11px] leading-5 text-[#737D8A]">
+                  {push.supported
+                    ? "Recevez une alerte directement sur votre téléphone ou ordinateur, même navigateur fermé — comme une vraie application."
+                    : "Ce navigateur ne prend pas en charge les notifications push."}
+                  {push.permission === "denied" && push.supported && " Les notifications sont bloquées : autorisez-les dans les réglages de votre navigateur."}
+                </p>
+              </div>
+              {push.checking ? (
+                <span className="text-[11px] text-[#9AA1AA]">…</span>
+              ) : (
+                <Toggle on={push.subscribed} setOn={(value) => (value ? push.enable() : push.disable())} />
+              )}
+            </div>
             <SettingRow label="Recevoir les emails du réseau" detail="Actualités, rencontres et opportunités pertinentes." on={emailNotifs} setOn={setEmailNotifs} />
             <SettingRow label="Rappels d'événements" detail="Un rappel avant les rendez-vous auxquels vous êtes inscrit." on={eventNotifs} setOn={setEventNotifs} />
           </div>

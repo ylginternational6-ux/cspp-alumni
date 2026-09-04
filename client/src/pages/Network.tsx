@@ -1,13 +1,17 @@
 /** CSPP Alumni network: gestion réelle des demandes de connexion, branchée sur server/routers/network.ts. */
 import { useEffect } from "react";
-import { Check, Clock, UserRound, UserX, X } from "lucide-react";
+import { Check, Clock, MessageCircle, UserRound, UserX, X } from "lucide-react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 import { Avatar, PageIntro, Panel } from "@/components/UiPrimitives";
 import { storageUrl } from "@/lib/storageUrl";
+import { useProfileOverlay } from "@/contexts/ProfileOverlayContext";
 import { trpc } from "@/lib/trpc";
 
 export default function Network() {
   const utils = trpc.useUtils();
+  const { openProfile } = useProfileOverlay();
+  const [, setLocation] = useLocation();
   const pendingQuery = trpc.network.pending.useQuery(undefined, { refetchInterval: 10000 });
   const connectionsQuery = trpc.network.list.useQuery();
 
@@ -37,6 +41,11 @@ export default function Network() {
     onError: (error) => toast.error(error.message),
   });
 
+  const startConversation = trpc.messaging.startConversation.useMutation({
+    onSuccess: (data) => data && setLocation(`/messages?c=${data.conversationId}`),
+    onError: (error) => toast.error(error.message),
+  });
+
   const incoming = pendingQuery.data?.incoming ?? [];
   const outgoing = pendingQuery.data?.outgoing ?? [];
   const connections = connectionsQuery.data ?? [];
@@ -50,11 +59,13 @@ export default function Network() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {incoming.map((request) => (
             <Panel key={request.connectionId} className="flex items-center gap-3 p-4">
-              <Avatar alt={request.name ?? "Alumni"} src={storageUrl(request.avatarStorageKey)} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-[#18263E]">{request.name}</p>
+              <button onClick={() => openProfile(request.otherUserId)} aria-label={`Voir le profil de ${request.name ?? "cet alumni"}`} className="shrink-0 rounded-full transition hover:opacity-80 active:scale-95">
+                <Avatar alt={request.name ?? "Alumni"} src={storageUrl(request.avatarStorageKey)} />
+              </button>
+              <button onClick={() => openProfile(request.otherUserId)} className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-bold text-[#18263E] hover:underline">{request.name}</p>
                 {request.headline && <p className="truncate text-[11px] text-[#6D7787]">{request.headline}</p>}
-              </div>
+              </button>
               <div className="flex shrink-0 gap-2">
                 <button onClick={() => respond.mutate({ requesterId: request.otherUserId, decision: "accepted" })} aria-label="Accepter" className="grid h-9 w-9 place-items-center rounded-full bg-[#142640] text-white transition hover:bg-[#0B1931]">
                   <Check size={16} />
@@ -79,13 +90,15 @@ export default function Network() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {outgoing.map((request) => (
             <Panel key={request.connectionId} className="flex items-center gap-3 p-4">
-              <Avatar alt={request.name ?? "Alumni"} src={storageUrl(request.avatarStorageKey)} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-[#18263E]">{request.name}</p>
+              <button onClick={() => openProfile(request.otherUserId)} aria-label={`Voir le profil de ${request.name ?? "cet alumni"}`} className="shrink-0 rounded-full transition hover:opacity-80 active:scale-95">
+                <Avatar alt={request.name ?? "Alumni"} src={storageUrl(request.avatarStorageKey)} />
+              </button>
+              <button onClick={() => openProfile(request.otherUserId)} className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-bold text-[#18263E] hover:underline">{request.name}</p>
                 <p className="flex items-center gap-1 text-[11px] text-[#8B661D]">
                   <Clock size={12} /> En attente de réponse
                 </p>
-              </div>
+              </button>
               <button onClick={() => cancel.mutate({ userId: request.otherUserId })} aria-label="Annuler l'invitation" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#E0DAD0] text-[#6D7787] transition hover:bg-[#F5F1EA]">
                 <UserX size={16} />
               </button>
@@ -100,11 +113,21 @@ export default function Network() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {connections.map((connection) => (
             <Panel key={connection.connectionId} className="flex items-center gap-3 p-4">
-              <Avatar alt={connection.name ?? "Alumni"} src={storageUrl(connection.avatarStorageKey)} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-[#18263E]">{connection.name}</p>
+              <button onClick={() => openProfile(connection.otherUserId)} aria-label={`Voir le profil de ${connection.name ?? "cet alumni"}`} className="shrink-0 rounded-full transition hover:opacity-80 active:scale-95">
+                <Avatar alt={connection.name ?? "Alumni"} src={storageUrl(connection.avatarStorageKey)} />
+              </button>
+              <button onClick={() => openProfile(connection.otherUserId)} className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-bold text-[#18263E] hover:underline">{connection.name}</p>
                 {connection.headline && <p className="truncate text-[11px] text-[#6D7787]">{connection.headline}</p>}
-              </div>
+              </button>
+              <button
+                onClick={() => startConversation.mutate({ userId: connection.otherUserId })}
+                disabled={startConversation.isPending}
+                aria-label={`Envoyer un message à ${connection.name ?? "cet alumni"}`}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#E0DAD0] text-[#6D7787] transition hover:bg-[#142640] hover:text-white"
+              >
+                <MessageCircle size={16} />
+              </button>
             </Panel>
           ))}
         </div>

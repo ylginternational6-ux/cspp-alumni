@@ -57,6 +57,10 @@ export const projectMembers = mysqlTable("projectMembers", { projectId: int("pro
 export const notifications = mysqlTable("notifications", { id: int("id").autoincrement().primaryKey(), userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }), type: varchar("type", { length: 60 }).notNull(), title: varchar("title", { length: 200 }).notNull(), body: text("body"), link: varchar("link", { length: 300 }), readAt: timestamp("readAt"), createdAt: timestamp("createdAt").defaultNow().notNull() }, (table) => [index("notifications_user_idx").on(table.userId, table.readAt, table.createdAt)]);
 export const campaigns = mysqlTable("campaigns", { id: int("id").autoincrement().primaryKey(), authorId: int("authorId").notNull().references(() => users.id, { onDelete: "cascade" }), title: varchar("title", { length: 200 }).notNull(), body: text("body").notNull(), segment: mysqlEnum("segment", ["all", "verified", "mentors", "promotion"]).default("all").notNull(), promotionId: int("promotionId").references(() => promotions.id), status: mysqlEnum("status", ["draft", "sent"]).default("draft").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), sentAt: timestamp("sentAt") });
 
+// --- Abonnements aux notifications push (Web Push / VAPID) ---
+// Un utilisateur peut être abonné depuis plusieurs appareils/navigateurs à la fois (endpoint = un par appareil).
+export const pushSubscriptions = mysqlTable("pushSubscriptions", { id: int("id").autoincrement().primaryKey(), userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }), endpoint: varchar("endpoint", { length: 500 }).notNull(), p256dh: varchar("p256dh", { length: 200 }).notNull(), auth: varchar("auth", { length: 100 }).notNull(), userAgent: varchar("userAgent", { length: 300 }), createdAt: timestamp("createdAt").defaultNow().notNull(), lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull() }, (table) => [uniqueIndex("push_subscription_endpoint_unique").on(table.endpoint), index("push_subscription_user_idx").on(table.userId)]);
+
 export type User = typeof users.$inferSelect; export type InsertUser = typeof users.$inferInsert;
 export type Post = typeof posts.$inferSelect;
 export type Opportunity = typeof opportunities.$inferSelect;
@@ -64,3 +68,4 @@ export type Event = typeof events.$inferSelect;
 export type MentorshipRequest = typeof mentorshipRequests.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;

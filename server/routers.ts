@@ -11,6 +11,7 @@ import { networkRouter } from "./routers/network";
 import { notificationsRouter } from "./routers/notifications";
 import { opportunitiesRouter } from "./routers/opportunities";
 import { projectsRouter } from "./routers/projects";
+import { pushRouter } from "./routers/push";
 import { reportsRouter } from "./routers/reports";
 import { savedRouter } from "./routers/saved";
 
@@ -27,6 +28,7 @@ export const appRouter = router({
   mentorship: mentorshipRouter,
   projects: projectsRouter,
   notifications: notificationsRouter,
+  push: pushRouter,
   reports: reportsRouter,
   saved: savedRouter,
   admin: adminRouter,

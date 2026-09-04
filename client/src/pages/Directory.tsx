@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import { Avatar, PageIntro, Panel } from "@/components/UiPrimitives";
 import { storageUrl } from "@/lib/storageUrl";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useProfileOverlay } from "@/contexts/ProfileOverlayContext";
 import { trpc } from "@/lib/trpc";
 
 export default function Directory() {
@@ -19,6 +20,7 @@ export default function Directory() {
   const { user } = useAuth();
   const isVerified = user?.accountStatus === "verified";
   const utils = trpc.useUtils();
+  const { openProfile } = useProfileOverlay();
 
   const promotionsQuery = trpc.account.promotions.useQuery();
   const directoryQuery = trpc.account.directory.useQuery({ search: search || undefined, promotionId: promotionId ?? undefined, mentorOnly: mentorOnly || undefined, limit: 48 });
@@ -90,7 +92,9 @@ export default function Directory() {
               return (
                 <Panel key={person.userId} className="p-4 transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(10,32,63,0.09)]">
                   <div className="flex items-start justify-between gap-2">
-                    <Avatar alt={person.name ?? "Alumni"} src={storageUrl(person.avatarStorageKey)} />
+                    <button onClick={() => openProfile(person.userId)} aria-label={`Voir le profil de ${person.name ?? "cet alumni"}`} className="rounded-full transition hover:opacity-80 active:scale-95">
+                      <Avatar alt={person.name ?? "Alumni"} src={storageUrl(person.avatarStorageKey)} />
+                    </button>
                     <button
                       onClick={() => (status ? undefined : handleConnect(person.userId))}
                       disabled={Boolean(status)}
@@ -100,7 +104,9 @@ export default function Directory() {
                       {status === "connected" ? <UserCheck size={16} /> : status === "pending" ? <Clock size={16} /> : <UserPlus size={16} />}
                     </button>
                   </div>
-                  <h2 className="mt-3 font-editorial text-[24px] font-semibold leading-5 text-[#0B1931]">{person.name}</h2>
+                  <button onClick={() => openProfile(person.userId)} className="mt-3 block text-left transition hover:underline">
+                    <h2 className="font-editorial text-[24px] font-semibold leading-5 text-[#0B1931]">{person.name}</h2>
+                  </button>
                   <p className="mt-1 text-xs font-bold text-[#4B5666]">{person.jobTitle ?? "—"}</p>
                   <p className="mt-1 text-[11px] text-[#78808B]">
                     {person.organization ?? "Alumni CSPP"} {person.promotionYear ? `· Promo ${person.promotionYear}` : ""}

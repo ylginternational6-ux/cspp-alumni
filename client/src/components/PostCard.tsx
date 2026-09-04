@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Avatar } from "@/components/UiPrimitives";
 import { trpc } from "@/lib/trpc";
 import { storageUrl } from "@/lib/storageUrl";
+import { useProfileOverlay } from "@/contexts/ProfileOverlayContext";
 
 export type FeedPost = {
   id: number;
@@ -33,6 +34,7 @@ function formatRelativeTime(date: string | Date) {
 
 export function PostCard({ post, isVerified, defaultCommentsOpen = false }: { post: FeedPost; isVerified: boolean; defaultCommentsOpen?: boolean }) {
   const utils = trpc.useUtils();
+  const { openProfile } = useProfileOverlay();
   const [commentsOpen, setCommentsOpen] = useState(defaultCommentsOpen);
 
   const savedIdsQuery = trpc.saved.ids.useQuery();
@@ -65,10 +67,14 @@ export function PostCard({ post, isVerified, defaultCommentsOpen = false }: { po
       <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 gap-3">
-            <Avatar alt={post.authorName ?? "Alumni"} src={storageUrl(post.authorAvatar)} />
+            <button onClick={() => openProfile(post.authorId)} aria-label={`Voir le profil de ${post.authorName ?? "cet alumni"}`} className="shrink-0 rounded-full transition hover:opacity-80 active:scale-95">
+              <Avatar alt={post.authorName ?? "Alumni"} src={storageUrl(post.authorAvatar)} />
+            </button>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h2 className="truncate text-sm font-bold text-[#101B31]">{post.authorName ?? "Alumni CSPP"}</h2>
+                <button onClick={() => openProfile(post.authorId)} className="truncate text-sm font-bold text-[#101B31] transition hover:underline">
+                  {post.authorName ?? "Alumni CSPP"}
+                </button>
                 {post.authorAccountStatus === "verified" ? (
                   <span className="grid h-4 w-4 place-items-center rounded-full bg-[#2776CE] text-[9px] text-white">✓</span>
                 ) : (
@@ -117,6 +123,7 @@ export function PostCard({ post, isVerified, defaultCommentsOpen = false }: { po
 
 function PostComments({ postId, isVerified }: { postId: number; isVerified: boolean }) {
   const utils = trpc.useUtils();
+  const { openProfile } = useProfileOverlay();
   const commentsQuery = trpc.feed.comments.useQuery({ postId });
   const [draft, setDraft] = useState("");
 
@@ -157,9 +164,13 @@ function PostComments({ postId, isVerified }: { postId: number; isVerified: bool
       <div className="space-y-3">
         {comments.map((comment) => (
           <div key={comment.id} className="flex gap-2.5">
-            <Avatar alt={comment.authorName ?? "Alumni"} src={storageUrl(comment.authorAvatar)} size="sm" />
+            <button onClick={() => openProfile(comment.authorId)} aria-label={`Voir le profil de ${comment.authorName ?? "cet alumni"}`} className="shrink-0 self-start rounded-full transition hover:opacity-80 active:scale-95">
+              <Avatar alt={comment.authorName ?? "Alumni"} src={storageUrl(comment.authorAvatar)} size="sm" />
+            </button>
             <div className="min-w-0 flex-1 rounded-2xl bg-white px-3 py-2 shadow-sm">
-              <p className="text-xs font-bold text-[#18263E]">{comment.authorName}</p>
+              <button onClick={() => openProfile(comment.authorId)} className="text-xs font-bold text-[#18263E] transition hover:underline">
+                {comment.authorName}
+              </button>
               <p className="mt-0.5 whitespace-pre-wrap text-xs leading-5 text-[#3D495B]">{comment.body}</p>
             </div>
             <button onClick={() => deleteComment.mutate({ commentId: comment.id })} aria-label="Supprimer le commentaire" className="self-start text-[#B8BEC7] hover:text-[#9E323A]">

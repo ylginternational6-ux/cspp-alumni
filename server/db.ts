@@ -11,6 +11,7 @@ export * from "./db/profiles";
 export * from "./db/promotions";
 export * from "./db/verification";
 export * from "./db/notifications";
+export * from "./db/push";
 export * from "./db/connections";
 export * from "./db/messaging";
 export * from "./db/feed";
